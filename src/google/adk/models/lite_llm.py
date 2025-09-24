@@ -490,6 +490,14 @@ def _model_response_to_generate_content_response(
     raise ValueError("No message in response")
 
   llm_response = _message_to_generate_content_response(message)
+  
+  # Add thinking/reasoning content if available
+  reasoning_content = message.get("reasoning_content")
+  if reasoning_content:
+    # Add reasoning content as a separate part with thought=True
+    thinking_part = types.Part(text=reasoning_content, thought=True)
+    llm_response.content.parts.insert(0, thinking_part)
+  
   if response.get("usage", None):
     llm_response.usage_metadata = types.GenerateContentResponseUsageMetadata(
         prompt_token_count=response["usage"].get("prompt_tokens", 0),
@@ -513,6 +521,13 @@ def _message_to_generate_content_response(
   """
 
   parts = []
+  
+  # Handle reasoning/thinking content if present
+  reasoning_content = message.get("reasoning_content")
+  if reasoning_content:
+    thinking_part = types.Part(text=reasoning_content, thought=True)
+    parts.append(thinking_part)
+  
   if message.get("content", None):
     parts.append(types.Part.from_text(text=message.get("content")))
 
@@ -529,6 +544,27 @@ def _message_to_generate_content_response(
   return LlmResponse(
       content=types.Content(role="model", parts=parts), partial=is_partial
   )
+
+
+def _map_thinking_budget_to_reasoning_effort(thinking_budget: int) -> Optional[str]:
+  """Maps thinking_budget to LiteLLM reasoning_effort parameter.
+  
+  Args:
+    thinking_budget: The thinking budget value (int)
+    
+  Returns:
+    The reasoning effort level ("low", "medium", "high") or None if disabled
+  """
+  if thinking_budget == -1:
+    return "high"  # Automatic mode maps to high
+  elif thinking_budget == 0:
+    return None  # Disabled
+  elif thinking_budget < 1000:
+    return "low"
+  elif thinking_budget < 5000:
+    return "medium"
+  else:
+    return "high"
 
 
 def _get_completion_inputs(
@@ -605,6 +641,27 @@ def _get_completion_inputs(
       if key in config_dict:
         mapped_key = param_mapping.get(key, key)
         generation_params[mapped_key] = config_dict[key]
+
+    # Handle thinking_config
+    if "thinking_config" in config_dict and config_dict["thinking_config"]:
+      thinking_config = config_dict["thinking_config"]
+      
+      # Extract thinking_budget from different config formats
+      include_thoughts = False
+      thinking_budget = 0  # Default to 0 (disabled)
+      
+      if isinstance(thinking_config, dict):
+        include_thoughts = thinking_config.get("include_thoughts", False)
+        thinking_budget = thinking_config.get("thinking_budget", 0)
+      elif hasattr(thinking_config, "include_thoughts"):
+        include_thoughts = thinking_config.include_thoughts
+        thinking_budget = getattr(thinking_config, "thinking_budget", 0)
+      
+      # Apply reasoning effort if thinking is enabled and budget is not 0
+      if include_thoughts and thinking_budget != 0:
+        reasoning_effort = _map_thinking_budget_to_reasoning_effort(thinking_budget)
+        if reasoning_effort:
+          generation_params["reasoning_effort"] = reasoning_effort
 
     if not generation_params:
       generation_params = None
