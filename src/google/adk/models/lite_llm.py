@@ -493,7 +493,7 @@ def _model_response_to_generate_content_response(
   
   # Add thinking/reasoning content if available
   reasoning_content = message.get("reasoning_content")
-  if reasoning_content and llm_response.content:
+  if reasoning_content:
     # Add reasoning content as a separate part with thought=True
     thinking_part = types.Part(text=reasoning_content, thought=True)
     llm_response.content.parts.insert(0, thinking_part)
