@@ -1,0 +1,161 @@
+# API Contract: LiteLLM Thinking Configuration
+
+## Overview
+This document defines the API contract for the thinking_config functionality with LiteLLM models in ADK.
+
+## Endpoints
+
+### POST /api/litellm/thinking
+Process a request with thinking configuration enabled for LiteLLM models.
+
+#### Request
+```
+POST /api/litellm/thinking
+Content-Type: application/json
+Authorization: Bearer <API_KEY>
+```
+
+##### Request Body
+```json
+{
+  "model_name": "string (required)",
+  "prompt": "string (required)",
+  "api_key": "string (required)",
+  "thinking_config": {
+    "include_thoughts": "boolean (default: false)",
+    "thought_format": "string (optional)"
+  },
+  "provider_specific_params": "object (optional)"
+}
+```
+
+##### Request Schema
+```json
+{
+  "type": "object",
+  "properties": {
+    "model_name": {
+      "type": "string",
+      "description": "The name of the model in provider/model format, e.g., 'openai/gpt-4'"
+    },
+    "prompt": {
+      "type": "string",
+      "description": "The input prompt for the model"
+    },
+    "api_key": {
+      "type": "string",
+      "description": "The API key for the provider"
+    },
+    "thinking_config": {
+      "type": "object",
+      "properties": {
+        "include_thoughts": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to include AI thoughts in the response"
+        },
+        "thought_format": {
+          "type": "string",
+          "enum": ["raw", "structured"],
+          "description": "The format in which to return thoughts"
+        }
+      },
+      "required": ["include_thoughts"]
+    },
+    "provider_specific_params": {
+      "type": "object",
+      "description": "Additional parameters specific to the provider"
+    }
+  },
+  "required": ["model_name", "prompt", "api_key"]
+}
+```
+
+#### Response
+##### Success Response (200 OK)
+```json
+{
+  "response": "string",
+  "thinking": "string | null",
+  "raw_response": "object",
+  "provider": "string",
+  "model_name": "string"
+}
+```
+
+##### Response Schema
+```json
+{
+  "type": "object",
+  "properties": {
+    "response": {
+      "type": "string",
+      "description": "The final response from the model"
+    },
+    "thinking": {
+      "type": ["string", "null"],
+      "description": "The internal reasoning/thoughts of the model, null if not supported by provider"
+    },
+    "raw_response": {
+      "type": "object",
+      "description": "The original response from the provider"
+    },
+    "provider": {
+      "type": "string",
+      "description": "The provider that generated the response"
+    },
+    "model_name": {
+      "type": "string",
+      "description": "The model name that was used"
+    }
+  },
+  "required": ["response", "raw_response", "provider", "model_name"]
+}
+```
+
+##### Error Response (4xx/5xx)
+```json
+{
+  "error": {
+    "type": "string",
+    "message": "string"
+  }
+}
+```
+
+#### Example Request
+```json
+{
+  "model_name": "openai/gpt-4",
+  "prompt": "Solve this step by step: If a tree falls in a forest and no one is around, does it make a sound?",
+  "api_key": "sk-xxxxx",
+  "thinking_config": {
+    "include_thoughts": true,
+    "thought_format": "raw"
+  }
+}
+```
+
+#### Example Response
+```json
+{
+  "response": "Yes, the tree would still produce sound waves when it falls, regardless of whether anyone is present to hear it. Sound is a physical phenomenon involving vibrations through a medium like air...",
+  "thinking": "First, I need to understand what sound is - it's vibrations that travel through a medium like air. Then I need to consider if observation is necessary for physical phenomena. Then evaluate if the falling tree would generate these vibrations regardless of an observer...",
+  "raw_response": {
+    "id": "chatcmpl-xxxxx",
+    "object": "chat.completion",
+    "created": 1677610602,
+    "model": "gpt-4",
+    // ... rest of provider-specific response
+  },
+  "provider": "openai",
+  "model_name": "openai/gpt-4"
+}
+```
+
+## Validation Rules
+
+1. If `thinking_config.include_thoughts` is true, the response should attempt to include thinking content when the provider supports it
+2. If a provider doesn't support thinking/thoughts, the response should still be successful but with `thinking` as null
+3. The response should maintain backward compatibility when `thinking_config` is not provided
+4. API should validate that `model_name` follows the `provider/model` format

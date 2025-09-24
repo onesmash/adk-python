@@ -21,6 +21,15 @@ Please refer to [ADK Project Overview and Architecture](https://github.com/googl
 - User audio or model audio should be saved into artifacts with a reference in Event to it.
 - Tests are in [tests/unittests/streaming](https://github.com/google/adk-python/tree/main/tests/unittests/streaming).
 
+### LiteLLM Thinking Configuration Support
+
+- New feature to support thinking_config for LiteLLM models, matching the functionality of plain Gemini models
+- Implementation in [litellm_model.py](https://github.com/google/adk-python/blob/main/src/google/adk/models/litellm_model.py) and related files
+- The ThinkingConfig class controls whether thoughts are included in model responses
+- Provider-specific thinking extraction handled via ThinkingExtractor utility
+- Supports major providers like OpenAI, Anthropic, and Google models
+- Maintains backward compatibility with existing configurations
+
 ## ADK: Style Guides
 
 ### Python Style Guide
