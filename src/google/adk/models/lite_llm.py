@@ -648,20 +648,15 @@ def _get_completion_inputs(
       
       # Extract thinking_budget from different config formats
       include_thoughts = False
-      thinking_budget = 0  # Default to 0 (disabled)
       
       if isinstance(thinking_config, dict):
         include_thoughts = thinking_config.get("include_thoughts", False)
-        thinking_budget = thinking_config.get("thinking_budget", 0)
       elif hasattr(thinking_config, "include_thoughts"):
         include_thoughts = thinking_config.include_thoughts
-        thinking_budget = getattr(thinking_config, "thinking_budget", 0)
       
       # Apply reasoning effort if thinking is enabled and budget is not 0
-      if include_thoughts and thinking_budget != 0:
-        reasoning_effort = _map_thinking_budget_to_reasoning_effort(thinking_budget)
-        if reasoning_effort:
-          generation_params["reasoning_effort"] = reasoning_effort
+      if include_thoughts:
+        generation_params["reasoning_effort"] = 'medium'
 
     if not generation_params:
       generation_params = None
