@@ -491,13 +491,6 @@ def _model_response_to_generate_content_response(
 
   llm_response = _message_to_generate_content_response(message)
   
-  # Add thinking/reasoning content if available
-  reasoning_content = message.get("reasoning_content")
-  if reasoning_content:
-    # Add reasoning content as a separate part with thought=True
-    thinking_part = types.Part(text=reasoning_content, thought=True)
-    llm_response.content.parts.insert(0, thinking_part)
-  
   if response.get("usage", None):
     llm_response.usage_metadata = types.GenerateContentResponseUsageMetadata(
         prompt_token_count=response["usage"].get("prompt_tokens", 0),
@@ -527,6 +520,7 @@ def _message_to_generate_content_response(
   if reasoning_content:
     thinking_part = types.Part(text=reasoning_content, thought=True)
     parts.append(thinking_part)
+    is_partial = True
   
   if message.get("content", None):
     parts.append(types.Part.from_text(text=message.get("content")))
